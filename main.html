@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ferramenta de Imagem Avançada</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .control-panel, .preview-panel {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .canvas-container {
+            width: 100%;
+            height: 320px; /* Fixed height for the viewer */
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+            background-image: 
+                linear-gradient(45deg, #e5e7eb 25%, transparent 25%), 
+                linear-gradient(-45deg, #e5e7eb 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #e5e7eb 75%),
+                linear-gradient(-45deg, transparent 75%, #e5e7eb 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .zoom-controls {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .zoom-btn {
+            background-color: rgba(255, 255, 255, 0.8);
+            border: 1px solid #ccc;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .zoom-btn:hover {
+            background-color: white;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #374151;
+        }
+        input[type="range"], input[type="color"] {
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+        .toggle-btn-group button {
+            border: 1px solid #d1d5db;
+        }
+        .toggle-btn-group button.active {
+            background-color: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+        .hidden-control {
+            display: none;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="container mx-auto max-w-5xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-gray-800">Ferramenta de Imagem Avançada</h1>
+            <p class="text-gray-600">Selecione imagens, aplique efeitos de sombreamento personalizados e gere normal maps.</p>
+        </header>
+
+        <div class="control-panel">
+            <h2 class="text-xl font-semibold mb-3 text-gray-700">1. Selecionar Imagens</h2>
+            <input type="file" id="imageUpload" multiple accept="image/*" class="block w-full text-sm text-gray-500
+                file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold
+                file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 mb-2">
+            <p id="imageCount" class="text-sm"></p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-6">
+            <div class="control-panel">
+                <h2 class="text-xl font-semibold mb-3 text-gray-700">2. Efeito Branco & Sombra</h2>
+                
+                <div class="mb-4">
+                    <label class="font-medium text-gray-700">Simular Cabeça:</label>
+                     <div class="toggle-btn-group flex mt-1">
+                        <button id="simulateHeadOff" data-active="false" class="flex-1 p-2 rounded-l-md active">Não</button>
+                        <button id="simulateHeadOn" data-active="true" class="flex-1 p-2 rounded-r-md">Sim</button>
+                    </div>
+                </div>
+                
+                <div id="headControls" class="hidden-control mb-4 p-4 border border-gray-200 rounded-md">
+                    <label for="headSizeSlider" class="font-medium text-gray-700">Tamanho da Cabeça: <span id="headSizeValueDisplay">25</span>%</label>
+                    <input type="range" id="headSizeSlider" min="5" max="100" step="1" value="25">
+                    <label for="headOffsetXSlider" class="font-medium text-gray-700">Posição X da Cabeça: <span id="headOffsetXValueDisplay">0</span>%</label>
+                    <input type="range" id="headOffsetXSlider" min="0" max="100" step="1" value="50">
+                    <label for="headOffsetYSlider" class="font-medium text-gray-700">Posição Y da Cabeça: <span id="headOffsetYValueDisplay">0</span>%</label>
+                    <input type="range" id="headOffsetYSlider" min="0" max="100" step="1" value="50">
+                </div>
+
+                <div class="mb-4">
+                    <label for="shadowSource" class="font-medium text-gray-700">Fonte da Sombra:</label>
+                    <div class="toggle-btn-group flex mt-1">
+                        <button id="shadowSourceEdge" data-source="edge" class="flex-1 p-2 rounded-l-md active">Borda (com inversão)</button>
+                        <button id="shadowSourceMiddle" data-source="middle" class="flex-1 p-2 rounded-r-md">Meio</button>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label for="shadowColor" class="font-medium text-gray-700">Cor da Sombra: <span id="shadowColorValueDisplay">#000000</span></label>
+                    <input type="color" id="shadowColor" value="#000000" class="h-10">
+                </div>
+
+                <div>
+                    <label for="shadowSize" class="font-medium text-gray-700">Tamanho da Sombra: <span id="shadowSizeValueDisplay">10</span></label>
+                    <input type="range" id="shadowSize" min="0" max="50" value="10">
+                </div>
+                <div>
+                    <label for="shadowDefinition" class="font-medium text-gray-700">Definição da Sombra (Opacidade): <span id="shadowDefinitionValueDisplay">0.5</span></label>
+                    <input type="range" id="shadowDefinition" min="0" max="1" step="0.01" value="0.5">
+                </div>
+                
+                <div class="canvas-container mt-2" id="shadowViewerContainer">
+                    <canvas id="shadowPreviewCanvas"></canvas>
+                    <div class="zoom-controls">
+                        <button id="zoomInShadow" class="zoom-btn">+</button>
+                        <button id="zoomOutShadow" class="zoom-btn">-</button>
+                        <button id="resetShadow" class="zoom-btn" title="Resetar Zoom">⟳</button>
+                    </div>
+                </div>
+
+                <div class="tooltip mt-4 w-full">
+                    <button id="downloadAllShadedImagesBtn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md disabled:opacity-50" disabled>
+                        Baixar Todas as Imagens Sombreadas
+                    </button>
+                    <span class="tooltiptext">Processa todas as imagens com o sombreamento atual e baixa as imagens sombreadas individualmente.</span>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <h2 class="text-xl font-semibold mb-3 text-gray-700">3. Normal Map</h2>
+                <div class="mb-4">
+                    <label class="font-medium text-gray-700">Fonte para o Normal Map:</label>
+                    <div class="toggle-btn-group flex mt-1">
+                        <button id="nmSourceShaded" data-source="shaded" class="flex-1 p-2 rounded-l-md active">Sombreada</button>
+                        <button id="nmSourceWhitened" data-source="whitened" class="flex-1 p-2">Branca</button>
+                        <button id="nmSourceOriginalRaw" data-source="original_raw" class="flex-1 p-2 rounded-r-md">Original</button>
+                    </div>
+                </div>
+                <div>
+                    <label for="normalMapStrength" class="font-medium text-gray-700">Intensidade: <span id="normalMapStrengthValueDisplay">2.0</span></label>
+                    <input type="range" id="normalMapStrength" min="0.1" max="10" step="0.1" value="2.0">
+                </div>
+                <div> 
+                    <label for="normalMapSmoothness" class="font-medium text-gray-700">Suavidade: <span id="normalMapSmoothnessValueDisplay">0.0</span>px</label>
+                    <input type="range" id="normalMapSmoothness" min="0" max="5" step="0.1" value="0.0">
+                </div>
+                <div> 
+                    <label for="normalMapScale" class="font-medium text-gray-700">Escala da Imagem Final: <span id="normalMapScaleValueDisplay">100</span>%</label>
+                    <input type="range" id="normalMapScale" min="100" max="1000" step="10" value="100">
+                </div>
+
+                <div class="canvas-container mt-2" id="normalMapViewerContainer">
+                    <canvas id="normalMapPreviewCanvas"></canvas>
+                     <div class="zoom-controls">
+                        <button id="zoomInNormal" class="zoom-btn">+</button>
+                        <button id="zoomOutNormal" class="zoom-btn">-</button>
+                        <button id="resetNormal" class="zoom-btn" title="Resetar Zoom">⟳</button>
+                    </div>
+                </div>
+                 <div class="tooltip mt-4 w-full">
+                    <button id="downloadAllNormalMapsBtn" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-md disabled:opacity-50" disabled>
+                        Baixar Todos os Normal Maps
+                    </button>
+                    <span class="tooltiptext">Processa todas as imagens com as configurações atuais, gera os normal maps e baixa-os individualmente.</span>
+                </div>
+            </div>
+        </div>
+        <div id="loadingIndicator" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50 hidden opacity-0">
+            <div class="bg-white p-8 rounded-lg shadow-xl text-center">
+                <p class="text-xl font-semibold text-gray-700 mb-4">Processando imagens...</p>
+                <div class="w-16 h-16 border-4 border-blue-500 border-t-transparent border-solid rounded-full animate-spin mx-auto"></div>
+                <p id="loadingProgress" class="mt-3 text-gray-600"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const imageUpload = document.getElementById('imageUpload');
+        const simulateHeadOnBtn = document.getElementById('simulateHeadOn');
+        const simulateHeadOffBtn = document.getElementById('simulateHeadOff');
+        const headControls = document.getElementById('headControls');
+        const headSizeSlider = document.getElementById('headSizeSlider');
+        const headSizeValueDisplay = document.getElementById('headSizeValueDisplay');
+        const headOffsetXSlider = document.getElementById('headOffsetXSlider');
+        const headOffsetXValueDisplay = document.getElementById('headOffsetXValueDisplay');
+        const headOffsetYSlider = document.getElementById('headOffsetYSlider');
+        const headOffsetYValueDisplay = document.getElementById('headOffsetYValueDisplay');
+        const shadowSourceEdgeBtn = document.getElementById('shadowSourceEdge');
+        const shadowSourceMiddleBtn = document.getElementById('shadowSourceMiddle');
+        const shadowColorInput = document.getElementById('shadowColor');
+        const shadowSizeSlider = document.getElementById('shadowSize');
+        const shadowDefinitionSlider = document.getElementById('shadowDefinition');
+        const shadowColorValueDisplay = document.getElementById('shadowColorValueDisplay');
+        const shadowSizeValueDisplay = document.getElementById('shadowSizeValueDisplay');
+        const shadowDefinitionValueDisplay = document.getElementById('shadowDefinitionValueDisplay');
+        const shadowPreviewCanvas = document.getElementById('shadowPreviewCanvas');
+        
+        const nmSourceShadedBtn = document.getElementById('nmSourceShaded');
+        const nmSourceWhitenedBtn = document.getElementById('nmSourceWhitened');
+        const nmSourceOriginalRawBtn = document.getElementById('nmSourceOriginalRaw');
+        const normalMapStrengthSlider = document.getElementById('normalMapStrength'); 
+        const normalMapStrengthValueDisplay = document.getElementById('normalMapStrengthValueDisplay'); 
+        const normalMapSmoothnessSlider = document.getElementById('normalMapSmoothness'); 
+        const normalMapSmoothnessValueDisplay = document.getElementById('normalMapSmoothnessValueDisplay'); 
+        const normalMapScaleSlider = document.getElementById('normalMapScale');
+        const normalMapScaleValueDisplay = document.getElementById('normalMapScaleValueDisplay');
+        const normalMapPreviewCanvas = document.getElementById('normalMapPreviewCanvas');
+        
+        const downloadAllShadedImagesBtn = document.getElementById('downloadAllShadedImagesBtn'); 
+        const downloadAllNormalMapsBtn = document.getElementById('downloadAllNormalMapsBtn');
+        const imageCountDisplay = document.getElementById('imageCount');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const loadingProgress = document.getElementById('loadingProgress');
+
+        // Canvas & View State
+        let selectedFiles = [];
+        let currentFirstOriginalImage = null;    
+        let currentFirstOriginalImageObjectURL = null; 
+        let currentFirstWhitenedCanvas = null; 
+        let currentFirstShadedCanvas = null;   
+        let generatedNormalMapCanvas = null;
+
+        let shadowViewState = { zoom: 1, offsetX: 0, offsetY: 0, isPanning: false, lastX: 0, lastY: 0, initialFit: {} };
+        let normalMapViewState = { zoom: 1, offsetX: 0, offsetY: 0, isPanning: false, lastX: 0, lastY: 0, initialFit: {} };
+
+        let shadowSettings = {
+            simulateHead: false,
+            headSizeRatio: 0.25,
+            headOffsetX: 50,
+            headOffsetY: 50,
+            source: 'edge', 
+            color: '#000000',
+            size: 10,       
+            definition: 0.5 
+        };
+
+        let normalMapSettings = { 
+            strength: 2.0,
+            smoothness: 0.0,
+            source: 'shaded',
+            scale: 100
+        };
+
+        // --- Event Listeners ---
+        imageUpload.addEventListener('change', handleFileSelection);
+        simulateHeadOnBtn.addEventListener('click', () => updateSimulateHead(true));
+        simulateHeadOffBtn.addEventListener('click', () => updateSimulateHead(false));
+        headSizeSlider.addEventListener('input', updateShadowSettingsFromUI);
+        headOffsetXSlider.addEventListener('input', updateShadowSettingsFromUI);
+        headOffsetYSlider.addEventListener('input', updateShadowSettingsFromUI);
+        shadowSourceEdgeBtn.addEventListener('click', () => updateShadowSource('edge'));
+        shadowSourceMiddleBtn.addEventListener('click', () => updateShadowSource('middle'));
+        shadowColorInput.addEventListener('input', updateShadowSettingsFromUI);
+        shadowSizeSlider.addEventListener('input', updateShadowSettingsFromUI);
+        shadowDefinitionSlider.addEventListener('input', updateShadowSettingsFromUI);
+        
+        nmSourceShadedBtn.addEventListener('click', () => updateNormalMapSource('shaded'));
+        nmSourceWhitenedBtn.addEventListener('click', () => updateNormalMapSource('whitened'));
+        nmSourceOriginalRawBtn.addEventListener('click', () => updateNormalMapSource('original_raw'));
+        normalMapStrengthSlider.addEventListener('input', updateNormalMapSettingsFromUI); 
+        normalMapSmoothnessSlider.addEventListener('input', updateNormalMapSettingsFromUI); 
+        normalMapScaleSlider.addEventListener('input', updateNormalMapSettingsFromUI);
+
+        downloadAllShadedImagesBtn.addEventListener('click', processAndDownloadAllShadedImages); 
+        downloadAllNormalMapsBtn.addEventListener('click', processAndDownloadAllNormalMaps);
+        
+        // --- Pan & Zoom and Preview Redrawing ---
+        function redrawPreview(canvas, sourceImage, state) {
+            if (!sourceImage) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(state.offsetX, state.offsetY);
+            ctx.scale(state.zoom, state.zoom);
+            ctx.imageSmoothingEnabled = false; // Keep it crisp on zoom
+            ctx.drawImage(sourceImage, 0, 0);
+            ctx.restore();
+        }
+
+        function redrawAllPreviews() {
+            redrawPreview(shadowPreviewCanvas, currentFirstShadedCanvas, shadowViewState);
+            redrawPreview(normalMapPreviewCanvas, generatedNormalMapCanvas, normalMapViewState);
+        }
+
+        function setupPanZoom(viewerContainer, state) {
+            const canvas = viewerContainer.querySelector('canvas');
+            viewerContainer.addEventListener('mousedown', (e) => {
+                state.isPanning = true;
+                state.lastX = e.clientX;
+                state.lastY = e.clientY;
+                viewerContainer.style.cursor = 'grabbing';
+            });
+            viewerContainer.addEventListener('mousemove', (e) => {
+                if (!state.isPanning) return;
+                const dx = e.clientX - state.lastX;
+                const dy = e.clientY - state.lastY;
+                state.offsetX += dx;
+                state.offsetY += dy;
+                state.lastX = e.clientX;
+                state.lastY = e.clientY;
+                redrawAllPreviews();
+            });
+            viewerContainer.addEventListener('mouseup', () => {
+                state.isPanning = false;
+                viewerContainer.style.cursor = 'grab';
+            });
+            viewerContainer.addEventListener('mouseleave', () => {
+                state.isPanning = false;
+                 viewerContainer.style.cursor = 'grab';
+            });
+            viewerContainer.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const scaleAmount = 1.1;
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                const worldX = (mouseX - state.offsetX) / state.zoom;
+                const worldY = (mouseY - state.offsetY) / state.zoom;
+                
+                if (e.deltaY < 0) { // Zoom in
+                    state.zoom *= scaleAmount;
+                } else { // Zoom out
+                    state.zoom /= scaleAmount;
+                }
+                state.zoom = Math.max(0.1, Math.min(state.zoom, 20)); // Clamp zoom level
+
+                state.offsetX = mouseX - worldX * state.zoom;
+                state.offsetY = mouseY - worldY * state.zoom;
+
+                redrawAllPreviews();
+            });
+        }
+        setupPanZoom(document.getElementById('shadowViewerContainer'), shadowViewState);
+        setupPanZoom(document.getElementById('normalMapViewerContainer'), normalMapViewState);
+        
+        document.getElementById('zoomInShadow').addEventListener('click', () => { zoom(shadowViewState, 1.2); });
+        document.getElementById('zoomOutShadow').addEventListener('click', () => { zoom(shadowViewState, 1 / 1.2); });
+        document.getElementById('resetShadow').addEventListener('click', () => { resetView(shadowViewState); });
+        
+        document.getElementById('zoomInNormal').addEventListener('click', () => { zoom(normalMapViewState, 1.2); });
+        document.getElementById('zoomOutNormal').addEventListener('click', () => { zoom(normalMapViewState, 1 / 1.2); });
+        document.getElementById('resetNormal').addEventListener('click', () => { resetView(normalMapViewState); });
+
+        function zoom(state, factor) {
+            state.zoom *= factor;
+            state.zoom = Math.max(0.1, Math.min(state.zoom, 20));
+            redrawAllPreviews();
+        }
+
+        function resetView(state) {
+            if(state.initialFit) {
+                 state.zoom = state.initialFit.zoom;
+                 state.offsetX = state.initialFit.offsetX;
+                 state.offsetY = state.initialFit.offsetY;
+                 redrawAllPreviews();
+            }
+        }
+
+
+        // --- Initialization ---
+        function initializeUI() {
+            shadowColorValueDisplay.textContent = shadowSettings.color;
+            shadowSizeValueDisplay.textContent = shadowSettings.size;
+            shadowDefinitionValueDisplay.textContent = shadowSettings.definition;
+            headSizeValueDisplay.textContent = Math.round(shadowSettings.headSizeRatio * 100) + '%';
+            headSizeSlider.value = shadowSettings.headSizeRatio * 100;
+            headOffsetXValueDisplay.textContent = Math.round(shadowSettings.headOffsetX - 50) + '%';
+            headOffsetXSlider.value = shadowSettings.headOffsetX;
+            headOffsetYValueDisplay.textContent = Math.round(shadowSettings.headOffsetY - 50) + '%';
+            headOffsetYSlider.value = shadowSettings.headOffsetY;
+
+            shadowSourceEdgeBtn.classList.add('active');
+            shadowSourceMiddleBtn.classList.remove('active');
+            simulateHeadOffBtn.classList.add('active');
+            simulateHeadOnBtn.classList.remove('active');
+
+            nmSourceShadedBtn.classList.add('active');
+            nmSourceWhitenedBtn.classList.remove('active');
+            nmSourceOriginalRawBtn.classList.remove('active');
+            normalMapStrengthValueDisplay.textContent = normalMapSettings.strength.toFixed(1); 
+            normalMapSmoothnessValueDisplay.textContent = normalMapSettings.smoothness.toFixed(1); 
+            normalMapScaleValueDisplay.textContent = normalMapSettings.scale + '%';
+        }
+        initializeUI();
+
+
+        // --- Core Logic Functions ---
+        function updateSimulateHead(isActive) {
+            shadowSettings.simulateHead = isActive;
+            simulateHeadOnBtn.classList.toggle('active', isActive);
+            simulateHeadOffBtn.classList.toggle('active', !isActive);
+            headControls.classList.toggle('hidden-control', !isActive);
+            processAndRedraw();
+        }
+
+        function updateShadowSource(source) {
+            shadowSettings.source = source;
+            shadowSourceEdgeBtn.classList.toggle('active', source === 'edge');
+            shadowSourceMiddleBtn.classList.toggle('active', source === 'middle');
+            processAndRedraw();
+        }
+        
+        function updateNormalMapSource(source) {
+            normalMapSettings.source = source;
+            nmSourceShadedBtn.classList.toggle('active', source === 'shaded');
+            nmSourceWhitenedBtn.classList.toggle('active', source === 'whitened');
+            nmSourceOriginalRawBtn.classList.toggle('active', source === 'original_raw');
+            processAndRedraw();
+        }
+
+        function updateShadowSettingsFromUI() {
+            shadowSettings.color = shadowColorInput.value;
+            shadowSettings.size = parseFloat(shadowSizeSlider.value);
+            shadowSettings.definition = parseFloat(shadowDefinitionSlider.value);
+            shadowSettings.headSizeRatio = parseFloat(headSizeSlider.value) / 100.0;
+            shadowSettings.headOffsetX = parseFloat(headOffsetXSlider.value);
+            shadowSettings.headOffsetY = parseFloat(headOffsetYSlider.value);
+
+            shadowColorValueDisplay.textContent = shadowSettings.color;
+            shadowSizeValueDisplay.textContent = shadowSettings.size;
+            shadowDefinitionValueDisplay.textContent = shadowSettings.definition;
+            headSizeValueDisplay.textContent = Math.round(shadowSettings.headSizeRatio * 100) + '%';
+            headOffsetXValueDisplay.textContent = Math.round(shadowSettings.headOffsetX - 50) + '%';
+            headOffsetYValueDisplay.textContent = Math.round(shadowSettings.headOffsetY - 50) + '%';
+
+            processAndRedraw();
+        }
+
+        function updateNormalMapSettingsFromUI() { 
+            normalMapSettings.strength = parseFloat(normalMapStrengthSlider.value);
+            normalMapSettings.smoothness = parseFloat(normalMapSmoothnessSlider.value); 
+            normalMapSettings.scale = parseInt(normalMapScaleSlider.value);
+            normalMapStrengthValueDisplay.textContent = normalMapSettings.strength.toFixed(1);
+            normalMapSmoothnessValueDisplay.textContent = normalMapSettings.smoothness.toFixed(1); 
+            normalMapScaleValueDisplay.textContent = normalMapSettings.scale + '%';
+            processAndRedraw();
+        }
+        
+        function showLoading(show, progressText = "") {
+            if (show) {
+                loadingProgress.textContent = progressText;
+                loadingIndicator.classList.remove('hidden');
+                setTimeout(() => loadingIndicator.classList.remove('opacity-0'), 10); 
+            } else {
+                loadingIndicator.classList.add('opacity-0');
+                setTimeout(() => loadingIndicator.classList.add('hidden'), 300); 
+            }
+        }
+
+        function handleFileSelection(event) {
+            selectedFiles = Array.from(event.target.files);
+            imageCountDisplay.textContent = `${selectedFiles.length} imagem(ns) selecionada(s).`;
+
+            if (currentFirstOriginalImageObjectURL) {
+                URL.revokeObjectURL(currentFirstOriginalImageObjectURL);
+                currentFirstOriginalImageObjectURL = null;
+            }
+
+            if (selectedFiles.length > 0) {
+                currentFirstOriginalImage = new Image();
+                currentFirstOriginalImage.onload = () => {
+                    const shadowContainer = document.getElementById('shadowViewerContainer');
+                    const normalContainer = document.getElementById('normalMapViewerContainer');
+                    shadowPreviewCanvas.width = shadowContainer.clientWidth;
+                    shadowPreviewCanvas.height = shadowContainer.clientHeight;
+                    normalMapPreviewCanvas.width = normalContainer.clientWidth;
+                    normalMapPreviewCanvas.height = normalContainer.clientHeight;
+
+                    const fitParams = calculateInitialFit(shadowPreviewCanvas, currentFirstOriginalImage);
+                    shadowViewState.initialFit = {...fitParams};
+                    normalMapViewState.initialFit = {...fitParams};
+                    resetView(shadowViewState);
+                    resetView(normalMapViewState);
+
+                    currentFirstWhitenedCanvas = whitenImage(currentFirstOriginalImage);
+                    processAndRedraw();
+
+                    downloadAllShadedImagesBtn.disabled = false; 
+                    downloadAllNormalMapsBtn.disabled = false;
+                };
+                currentFirstOriginalImage.onerror = () => {
+                    console.error("Erro ao carregar a primeira imagem para preview.");
+                    if (currentFirstOriginalImageObjectURL) { URL.revokeObjectURL(currentFirstOriginalImageObjectURL); }
+                    resetUI(); 
+                    imageCountDisplay.textContent = `${selectedFiles.length} imagem(ns) selecionada(s). A primeira imagem falhou ao carregar.`;
+                }
+                try {
+                    currentFirstOriginalImageObjectURL = URL.createObjectURL(selectedFiles[0]);
+                    currentFirstOriginalImage.src = currentFirstOriginalImageObjectURL;
+                } catch (e) {
+                     console.error("Erro ao criar Object URL para a primeira imagem:", e);
+                     resetUI();
+                }
+            } else {
+                resetUI();
+            }
+        }
+        
+        function calculateInitialFit(canvas, image) {
+            const canvasAspect = canvas.width / canvas.height;
+            const imageAspect = image.naturalWidth / image.naturalHeight;
+            let zoom = 1;
+            if (imageAspect > canvasAspect) {
+                zoom = canvas.width / image.naturalWidth;
+            } else {
+                zoom = canvas.height / image.naturalHeight;
+            }
+            zoom *= 0.95; // Add some padding
+            const offsetX = (canvas.width - image.naturalWidth * zoom) / 2;
+            const offsetY = (canvas.height - image.naturalHeight * zoom) / 2;
+            return { zoom, offsetX, offsetY };
+        }
+
+        function resetUI() {
+            if (currentFirstOriginalImageObjectURL) { URL.revokeObjectURL(currentFirstOriginalImageObjectURL); }
+            currentFirstOriginalImage = null;
+            currentFirstWhitenedCanvas = null;
+            currentFirstShadedCanvas = null;
+            generatedNormalMapCanvas = null;
+            shadowPreviewCtx.clearRect(0, 0, shadowPreviewCanvas.width, shadowPreviewCanvas.height);
+            normalMapPreviewCtx.clearRect(0, 0, normalMapPreviewCanvas.width, normalMapPreviewCanvas.height);
+            downloadAllShadedImagesBtn.disabled = true; 
+            downloadAllNormalMapsBtn.disabled = true;
+            imageCountDisplay.textContent = "";
+            selectedFiles = []; 
+            imageUpload.value = ''; 
+        }
+
+        function whitenImage(sourceImageElement) {
+            const canvas = document.createElement('canvas');
+            canvas.width = sourceImageElement.naturalWidth;
+            canvas.height = sourceImageElement.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.drawImage(sourceImageElement, 0, 0);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                if (data[i + 3] > 0) { 
+                    data[i] = 255; data[i + 1] = 255; data[i + 2] = 255;
+                }
+            }
+            ctx.putImageData(imageData, 0, 0);
+            return canvas;
+        }
+
+        function invertCanvasColors(ctx) {
+            const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                if (data[i + 3] > 0) { 
+                    data[i] = 255 - data[i]; data[i + 1] = 255 - data[i + 1]; data[i + 2] = 255 - data[i + 2];
+                }
+            }
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        function findTopmostPixel(canvas) {
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            for (let y = 0; y < canvas.height; y++) {
+                for (let x = 0; x < canvas.width; x++) {
+                    const alpha = data[(y * canvas.width + x) * 4 + 3];
+                    if (alpha > 0) {
+                        return { x, y };
+                    }
+                }
+            }
+            return null;
+        }
+        
+        function processAndRedraw() {
+            if (!currentFirstOriginalImage) return;
+
+            const bodyShadedCanvas = getShadedLayer(currentFirstWhitenedCanvas);
+            
+            let headShadedCanvas = null;
+            if (shadowSettings.simulateHead) {
+                headShadedCanvas = getHeadLayer(currentFirstWhitenedCanvas);
+            }
+
+            // Create final shaded preview by merging
+            const finalShadedCanvas = document.createElement('canvas');
+            finalShadedCanvas.width = bodyShadedCanvas.width;
+            finalShadedCanvas.height = bodyShadedCanvas.height;
+            const finalCtx = finalShadedCanvas.getContext('2d');
+            finalCtx.drawImage(bodyShadedCanvas, 0, 0);
+            if(headShadedCanvas) {
+                finalCtx.drawImage(headShadedCanvas, 0, 0);
+            }
+            currentFirstShadedCanvas = finalShadedCanvas;
+
+            // Determine Normal Map source and generate
+            let normalMapSourceCanvas;
+            switch (normalMapSettings.source) {
+                case 'shaded':
+                    if (shadowSettings.simulateHead && headShadedCanvas) {
+                        const bodyNormalMap = generateNormalMapData(bodyShadedCanvas, normalMapSettings.strength, normalMapSettings.smoothness);
+                        const headNormalMap = generateNormalMapData(headShadedCanvas, normalMapSettings.strength, normalMapSettings.smoothness);
+                        
+                        const mergedNormalMap = document.createElement('canvas');
+                        mergedNormalMap.width = bodyNormalMap.width;
+                        mergedNormalMap.height = bodyNormalMap.height;
+                        const mergedCtx = mergedNormalMap.getContext('2d');
+                        mergedCtx.drawImage(bodyNormalMap, 0, 0);
+                        mergedCtx.drawImage(headNormalMap, 0, 0);
+                        generatedNormalMapCanvas = mergedNormalMap;
+                    } else {
+                        generatedNormalMapCanvas = generateNormalMapData(currentFirstShadedCanvas, normalMapSettings.strength, normalMapSettings.smoothness);
+                    }
+                    break;
+                case 'whitened':
+                    generatedNormalMapCanvas = generateNormalMapData(currentFirstWhitenedCanvas, normalMapSettings.strength, normalMapSettings.smoothness);
+                    break;
+                case 'original_raw':
+                    const rawCanvas = document.createElement('canvas');
+                    rawCanvas.width = currentFirstOriginalImage.naturalWidth;
+                    rawCanvas.height = currentFirstOriginalImage.naturalHeight;
+                    rawCanvas.getContext('2d').drawImage(currentFirstOriginalImage, 0, 0);
+                    generatedNormalMapCanvas = generateNormalMapData(rawCanvas, normalMapSettings.strength, normalMapSettings.smoothness);
+                    break;
+                default:
+                    generatedNormalMapCanvas = generateNormalMapData(currentFirstShadedCanvas, normalMapSettings.strength, normalMapSettings.smoothness);
+            }
+
+            redrawAllPreviews();
+        }
+        
+        function getShadedLayer(sourceShape) {
+            const shadedCanvas = document.createElement('canvas');
+            shadedCanvas.width = sourceShape.width;
+            shadedCanvas.height = sourceShape.height;
+            const shadedCtx = shadedCanvas.getContext('2d');
+            shadedCtx.drawImage(sourceShape, 0, 0);
+
+            if (shadowSettings.source === 'edge') {
+                applyEdgeShadowEffect(shadedCtx, sourceShape, shadowSettings);
+                invertCanvasColors(shadedCtx);
+            } else {
+                applyMiddleShadowEffect(shadedCtx, sourceShape, shadowSettings);
+            }
+            return shadedCanvas;
+        }
+        
+        function getHeadLayer(bodyShapeCanvas) {
+            const topPixel = findTopmostPixel(bodyShapeCanvas);
+            if (!topPixel) return null;
+
+            const headRadius = (bodyShapeCanvas.width * shadowSettings.headSizeRatio) / 2;
+            const offsetX = (shadowSettings.headOffsetX - 50) / 100 * bodyShapeCanvas.width;
+            const offsetY = (shadowSettings.headOffsetY - 50) / 100 * bodyShapeCanvas.height;
+            const headCenterX = topPixel.x + offsetX;
+            const headCenterY = (topPixel.y + headRadius * 0.8) + offsetY;
+            
+            // 1. Create the circle shape
+            const headShapeCanvas = document.createElement('canvas');
+            headShapeCanvas.width = bodyShapeCanvas.width;
+            headShapeCanvas.height = bodyShapeCanvas.height;
+            const headShapeCtx = headShapeCanvas.getContext('2d');
+            headShapeCtx.fillStyle = 'white';
+            headShapeCtx.beginPath();
+            headShapeCtx.arc(headCenterX, headCenterY, headRadius, 0, Math.PI * 2);
+            headShapeCtx.fill();
+
+            // 2. Shade the head shape
+            const shadedHeadCanvas = getShadedLayer(headShapeCanvas);
+
+            // 3. Mask the shaded head to the main body silhouette
+            const shadedHeadCtx = shadedHeadCanvas.getContext('2d');
+            shadedHeadCtx.globalCompositeOperation = 'destination-in';
+            shadedHeadCtx.drawImage(bodyShapeCanvas, 0, 0);
+            shadedHeadCtx.globalCompositeOperation = 'source-over';
+
+            return shadedHeadCanvas;
+        }
+
+        function applyEdgeShadowEffect(targetCtx, shapeCanvas, settings) {
+            targetCtx.save(); 
+            targetCtx.globalCompositeOperation = 'source-atop'; 
+
+            const tempShadowCanvas = document.createElement('canvas');
+            tempShadowCanvas.width = shapeCanvas.width;
+            tempShadowCanvas.height = shapeCanvas.height;
+            const tsCtx = tempShadowCanvas.getContext('2d');
+
+            tsCtx.drawImage(shapeCanvas, 0, 0); 
+            tsCtx.globalCompositeOperation = 'source-in'; 
+            const r = parseInt(settings.color.slice(1, 3), 16);
+            const g = parseInt(settings.color.slice(3, 5), 16);
+            const b = parseInt(settings.color.slice(5, 7), 16);
+            tsCtx.fillStyle = `rgba(${r},${g},${b},${settings.definition})`;
+            tsCtx.fillRect(0, 0, tempShadowCanvas.width, tempShadowCanvas.height);
+            
+            if (settings.size > 0) {
+                targetCtx.filter = `blur(${settings.size}px)`;
+                targetCtx.drawImage(tempShadowCanvas, 0, 0); 
+                targetCtx.filter = 'none'; 
+            } else {
+                targetCtx.drawImage(tempShadowCanvas, 0, 0); 
+            }
+            targetCtx.restore(); 
+        }
+
+        function applyMiddleShadowEffect(targetCtx, shapeCanvas, settings) {
+            targetCtx.save();
+            targetCtx.globalCompositeOperation = 'source-atop'; 
+
+            const width = shapeCanvas.width;
+            const height = shapeCanvas.height;
+            const cx = width / 2;
+            const cy = height / 2;
+
+            const r = parseInt(settings.color.slice(1, 3), 16);
+            const gVal = parseInt(settings.color.slice(3, 5), 16); 
+            const bVal = parseInt(settings.color.slice(5, 7), 16); 
+
+            const shadowColorStart = `rgba(${r},${gVal},${bVal},${settings.definition})`;
+            const shadowColorEnd = `rgba(${r},${gVal},${bVal},0)`; 
+            
+            let outerRadiusRatio = (settings.size / 50) * 2; 
+            if (settings.size === 0) outerRadiusRatio = 0.02; 
+
+            const effectiveOuterRadius = (Math.min(width, height)) * outerRadiusRatio; 
+            
+            const gradient = targetCtx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(1, effectiveOuterRadius)); 
+            gradient.addColorStop(0, shadowColorStart); 
+            gradient.addColorStop(1, shadowColorEnd);   
+
+            targetCtx.fillStyle = gradient;
+            targetCtx.fillRect(0, 0, width, height); 
+            targetCtx.restore(); 
+        }
+        
+        function generateNormalMapData(sourceCanvasElement, currentNMStrength, currentNMSmoothness) {
+            const canvas = document.createElement('canvas');
+            canvas.width = sourceCanvasElement.width;
+            canvas.height = sourceCanvasElement.height;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.drawImage(sourceCanvasElement, 0, 0);
+
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            const outputData = new Uint8ClampedArray(data.length);
+            const strength = currentNMStrength; 
+
+            function getLuminance(x, y) {
+                x = Math.max(0, Math.min(x, canvas.width - 1));
+                y = Math.max(0, Math.min(y, canvas.height - 1));
+                const i = (y * canvas.width + x) * 4;
+                return data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114;
+            }
+
+            for (let y = 0; y < canvas.height; y++) {
+                for (let x = 0; x < canvas.width; x++) {
+                    const Gx = (getLuminance(x + 1, y - 1) + 2 * getLuminance(x + 1, y) + getLuminance(x + 1, y + 1)) -
+                               (getLuminance(x - 1, y - 1) + 2 * getLuminance(x - 1, y) + getLuminance(x - 1, y + 1));
+                    const Gy = (getLuminance(x - 1, y + 1) + 2 * getLuminance(x, y + 1) + getLuminance(x + 1, y + 1)) -
+                               (getLuminance(x - 1, y - 1) + 2 * getLuminance(x, y - 1) + getLuminance(x + 1, y - 1));
+
+                    let Nx = Gx / 255.0; 
+                    let Ny = Gy / 255.0; 
+                    let Nz = 1.0 / strength; 
+                    
+                    const len = Math.sqrt(Nx * Nx + Ny * Ny + Nz * Nz);
+                    if (len > 0) {
+                        Nx /= len; Ny /= len; Nz /= len;
+                    } else { 
+                        Nx = 0; Ny = 0; Nz = 1; 
+                    }
+                    
+                    const i = (y * canvas.width + x) * 4;
+                    outputData[i]     = (-Nx * 0.5 + 0.5) * 255; 
+                    outputData[i + 1] = (Ny * 0.5 + 0.5) * 255; 
+                    outputData[i + 2] = (Nz * 0.5 + 0.5) * 255; 
+                    outputData[i + 3] = data[i+3]; 
+                }
+            }
+            const outputImageData = new ImageData(outputData, canvas.width, canvas.height);
+            ctx.putImageData(outputImageData, 0, 0);
+
+            if (currentNMSmoothness > 0) {
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = canvas.width;
+                tempCanvas.height = canvas.height;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.drawImage(canvas, 0, 0); 
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height); 
+                ctx.filter = `blur(${currentNMSmoothness}px)`;
+                ctx.drawImage(tempCanvas, 0, 0); 
+                ctx.filter = 'none'; 
+            }
+            return canvas;
+        }
+
+        // --- Download Functions ---
+        function downloadCanvasImage(canvasElement, filename, scale) { 
+            if (!canvasElement || canvasElement.width === 0 || canvasElement.height === 0) {
+                console.error(`Não foi possível gerar a imagem para ${filename}. O canvas está vazio ou inválido.`);
+                return;
+            }
+            
+            if (!scale || scale === 1) {
+                const dataURL = canvasElement.toDataURL('image/png'); 
+                const link = document.createElement('a');
+                link.href = dataURL;
+                link.download = filename;
+                document.body.appendChild(link); 
+                link.click();
+                document.body.removeChild(link);
+                return;
+            }
+
+            const scaledWidth = canvasElement.width * scale;
+            const scaledHeight = canvasElement.height * scale;
+            const scaledCanvas = document.createElement('canvas');
+            scaledCanvas.width = scaledWidth;
+            scaledCanvas.height = scaledHeight;
+            const scaledCtx = scaledCanvas.getContext('2d');
+
+            scaledCtx.imageSmoothingEnabled = false;
+            scaledCtx.mozImageSmoothingEnabled = false;
+            scaledCtx.webkitImageSmoothingEnabled = false;
+            scaledCtx.msImageSmoothingEnabled = false;
+
+            scaledCtx.drawImage(canvasElement, 0, 0, scaledWidth, scaledHeight);
+            
+            const dataURL = scaledCanvas.toDataURL('image/png'); 
+            const link = document.createElement('a');
+            link.href = dataURL;
+            link.download = filename;
+            document.body.appendChild(link); 
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        function loadImageFromFile(file) { 
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                let objectUrl = null; 
+
+                img.onload = () => {
+                    if (objectUrl) {
+                        URL.revokeObjectURL(objectUrl); 
+                    }
+                    resolve(img);
+                };
+                img.onerror = (event) => {
+                    const fileNameForError = file ? file.name : 'arquivo desconhecido';
+                    console.error(`Erro ao carregar imagem via loadImageFromFile: ${fileNameForError}. Tipo do evento: ${event.type}`, event);
+                    if (objectUrl) {
+                        URL.revokeObjectURL(objectUrl); 
+                    }
+                    reject(new Error(`Falha ao carregar imagem: ${fileNameForError}`));
+                };
+
+                if (!file || typeof file.type === 'undefined' || !file.type.startsWith('image/')) {
+                    const fileName = file ? file.name : 'arquivo indefinido';
+                    console.error(`Arquivo inválido ou não é uma imagem: ${fileName}`);
+                    reject(new Error(`Arquivo inválido ou não é uma imagem: ${fileName}`));
+                    return;
+                }
+                
+                try {
+                    objectUrl = URL.createObjectURL(file);
+                    img.src = objectUrl;
+                } catch (e) {
+                    const fileNameForCatch = file ? file.name : 'arquivo desconhecido';
+                    console.error(`Erro ao criar Object URL para: ${fileNameForCatch}`, e);
+                    reject(new Error(`Erro ao criar Object URL para: ${fileNameForCatch}. Detalhe: ${e.message}`));
+                }
+            });
+        }
+
+        async function processAndDownloadAllShadedImages() { 
+            if (selectedFiles.length === 0) {
+                console.error("Nenhuma imagem selecionada para sombrear.");
+                return;
+            }
+            showLoading(true, `Iniciando sombreamento... 0/${selectedFiles.length}`);
+            
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const file = selectedFiles[i];
+                loadingProgress.textContent = `Sombreando ${i + 1}/${selectedFiles.length}: ${file.name}`;
+                await new Promise(resolve => setTimeout(resolve, 10)); 
+
+                try {
+                    const originalImgElement = await loadImageFromFile(file);
+                    const whitenedFullResCanvas = whitenImage(originalImgElement);
+                    const bodyShadedCanvas = getShadedLayer(whitenedFullResCanvas);
+                    
+                    let finalCanvas = bodyShadedCanvas;
+
+                    if(shadowSettings.simulateHead) {
+                        const headShadedCanvas = getHeadLayer(whitenedFullResCanvas);
+                        if (headShadedCanvas) {
+                           const mergedCtx = finalCanvas.getContext('2d');
+                           mergedCtx.drawImage(headShadedCanvas, 0, 0);
+                        }
+                    }
+
+                    const originalName = file.name.substring(0, file.name.lastIndexOf('.') || file.name.length);
+                    downloadCanvasImage(finalCanvas, `${originalName}_sombreada.png`, normalMapSettings.scale / 100);
+
+                    if (i < selectedFiles.length - 1) {
+                         await new Promise(resolve => setTimeout(resolve, 200)); 
+                    }
+                } catch (error) {
+                    console.error(`Erro ao sombrear ${file.name}. Detalhes no console.`, error);
+                }
+            }
+            showLoading(false);
+        }
+
+
+        async function processAndDownloadAllNormalMaps() {
+            if (selectedFiles.length === 0) {
+                console.error("Nenhuma imagem selecionada para gerar Normal Maps.");
+                return;
+            }
+            showLoading(true, `Iniciando Normal Maps... 0/${selectedFiles.length}`);
+            
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const file = selectedFiles[i];
+                loadingProgress.textContent = `Gerando Normal Map ${i + 1}/${selectedFiles.length}: ${file.name}`;
+                await new Promise(resolve => setTimeout(resolve, 10)); 
+
+                try {
+                    const originalImgElement = await loadImageFromFile(file);
+                    
+                    let finalNormalMapCanvas;
+                    
+                    switch (normalMapSettings.source) {
+                        case 'shaded': {
+                            const whitenedFullResCanvas = whitenImage(originalImgElement);
+                            const bodyShadedCanvas = getShadedLayer(whitenedFullResCanvas);
+
+                            if (shadowSettings.simulateHead) {
+                                const headShadedCanvas = getHeadLayer(whitenedFullResCanvas);
+                                if (headShadedCanvas) {
+                                    const bodyNormalMap = generateNormalMapData(bodyShadedCanvas, normalMapSettings.strength, normalMapSettings.smoothness);
+                                    const headNormalMap = generateNormalMapData(headShadedCanvas, normalMapSettings.strength, normalMapSettings.smoothness);
+                                    
+                                    const mergedNormalMap = document.createElement('canvas');
+                                    mergedNormalMap.width = bodyNormalMap.width;
+                                    mergedNormalMap.height = bodyNormalMap.height;
+                                    const mergedCtx = mergedNormalMap.getContext('2d');
+                                    mergedCtx.drawImage(bodyNormalMap, 0, 0);
+                                    mergedCtx.drawImage(headNormalMap, 0, 0);
+                                    finalNormalMapCanvas = mergedNormalMap;
+                                } else {
+                                     finalNormalMapCanvas = generateNormalMapData(bodyShadedCanvas, normalMapSettings.strength, normalMapSettings.smoothness);
+                                }
+                            } else {
+                                finalNormalMapCanvas = generateNormalMapData(bodyShadedCanvas, normalMapSettings.strength, normalMapSettings.smoothness);
+                            }
+                            break;
+                        }
+                        case 'whitened': {
+                            finalNormalMapCanvas = generateNormalMapData(whitenImage(originalImgElement), normalMapSettings.strength, normalMapSettings.smoothness);
+                            break;
+                        }
+                        case 'original_raw': {
+                            const rawCanvas = document.createElement('canvas');
+                            rawCanvas.width = originalImgElement.naturalWidth;
+                            rawCanvas.height = originalImgElement.naturalHeight;
+                            rawCanvas.getContext('2d').drawImage(originalImgElement, 0, 0);
+                            finalNormalMapCanvas = generateNormalMapData(rawCanvas, normalMapSettings.strength, normalMapSettings.smoothness);
+                            break;
+                        }
+                    }
+
+                    const originalName = file.name.substring(0, file.name.lastIndexOf('.') || file.name.length);
+                    downloadCanvasImage(finalNormalMapCanvas, `normal_${originalName}.png`, normalMapSettings.scale / 100);
+
+                    if (i < selectedFiles.length - 1) {
+                         await new Promise(resolve => setTimeout(resolve, 200)); 
+                    }
+                } catch (error) {
+                    console.error(`Erro ao processar ${file.name} para Normal Map. Detalhes no console.`, error);
+                }
+            }
+            showLoading(false);
+        }
+    </script>
+</body>
+</html>
