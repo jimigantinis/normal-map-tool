@@ -2,8 +2,8 @@ Ferramenta Avançada de Normal Maps para Pixel Art
 
 Uma ferramenta web poderosa e intuitiva para agilizar o processo de criação de Normal Maps e efeitos de sombreamento, com foco especial em sprites de Pixel Art.
 
-🎨 Demonstração
-(Recomendação: Grave um GIF curto mostrando a ferramenta em ação e insira aqui. Isso aumenta muito o interesse no projeto!)
+!🎨 Demonstração
+!(Recomendação: Grave um GIF curto mostrando a ferramenta em ação e insira aqui. Isso aumenta muito o interesse no projeto!)
 
 ![Demonstração da Ferramenta](link_para_seu_gif_aqui.gif)
 
